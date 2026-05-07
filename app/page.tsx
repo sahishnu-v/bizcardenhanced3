@@ -15,6 +15,19 @@ const EMPTY_FORM = {
   full_name: "", title: "", company: "", email: "", phone: "", website: "", category_id: "",
 };
 
+const TAILWIND_TO_HEX: Record<string, string> = {
+  "bg-blue-500":    "#3b82f6",
+  "bg-emerald-500": "#10b981",
+  "bg-rose-500":    "#f43f5e",
+  "bg-amber-500":   "#f59e0b",
+  "bg-purple-500":  "#a855f7",
+  "bg-orange-500":  "#f97316",
+  "bg-sky-500":     "#0ea5e9",
+  "bg-pink-500":    "#ec4899",
+  "bg-teal-500":    "#14b8a6",
+  "bg-violet-500":  "#8b5cf6",
+};
+
 type Card = {
   id: string;
   full_name: string;
@@ -377,13 +390,13 @@ export default function Page() {
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     {label} {required && <span className="text-red-500">*</span>}
                   </label>
-                  <input type={type ?? "text"} className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  <input type={type ?? "text"} className="w-full text-sm text-slate-900 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                     value={addFormData[key]} onChange={e => setAddFormData({ ...addFormData, [key]: e.target.value })} placeholder={placeholder} />
                 </div>
               ))}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Category</label>
-                <select className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                <select className="w-full text-sm text-slate-900 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   value={addFormData.category_id} onChange={e => setAddFormData({ ...addFormData, category_id: e.target.value })}>
                   <option value="">— Select a category —</option>
                   {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
@@ -391,7 +404,7 @@ export default function Page() {
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Website</label>
-                <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                <input className="w-full text-sm text-slate-900 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                   value={addFormData.website} onChange={e => setAddFormData({ ...addFormData, website: e.target.value })} placeholder="example.com" />
               </div>
             </div>
@@ -412,10 +425,11 @@ export default function Page() {
             const bio = bios[card.id];
             const avatarUrl = card.profile_photo_url
               ?? `https://api.dicebear.com/7.x/personas/svg?seed=${card.id}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+            const categoryColor = TAILWIND_TO_HEX[card.categories?.color ?? ""] ?? "#94a3b8";
 
             return (
               <div key={card.id} className="group relative flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-all duration-300 hover:shadow-xl">
-                <div className="h-2 w-full" style={{ backgroundColor: card.categories?.color ?? "#94a3b8" }} />
+                <div className="h-2 w-full" style={{ backgroundColor: categoryColor }} />
                 <div className="p-6 flex flex-col h-full">
                   <div className="flex justify-between items-start mb-4">
                     <div className="h-16 w-16 rounded-full overflow-hidden bg-slate-100 ring-2 ring-white shadow-sm">
@@ -423,7 +437,7 @@ export default function Page() {
                       <img src={isEditing ? (editPhotoPreview ?? avatarUrl) : avatarUrl} alt={card.full_name} className="h-full w-full object-cover" />
                     </div>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white shadow-sm"
-                      style={{ backgroundColor: card.categories?.color ?? "#94a3b8" }}>
+                      style={{ backgroundColor: categoryColor }}>
                       {card.categories?.name ?? "Uncategorized"}
                     </span>
                   </div>
@@ -440,11 +454,11 @@ export default function Page() {
                         )}
                       </div>
                       {["full_name", "title", "company", "email", "phone", "website"].map(field => (
-                        <input key={field} className="w-full text-sm border rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                        <input key={field} className="w-full text-sm text-slate-900 border rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none"
                           value={editFormData[field] ?? ""} onChange={e => setEditFormData({ ...editFormData, [field]: e.target.value })}
                           placeholder={field.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())} />
                       ))}
-                      <select className="w-full text-sm border rounded px-2 py-1 outline-none bg-white"
+                      <select className="w-full text-sm text-slate-900 border rounded px-2 py-1 outline-none bg-white"
                         value={editFormData.category_id ?? ""} onChange={e => setEditFormData({ ...editFormData, category_id: e.target.value })}>
                         <option value="">— Category —</option>
                         {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
