@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toastSuccess, toastError, toastInfo } from "@/lib/toast";
-import DeleteModal from "@/components/DeleteModal";
+import DeleteModal from "@/app/components/DeleteModal";
 import { useRouter } from "next/navigation";
 
 type Card = {
