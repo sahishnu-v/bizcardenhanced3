@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 import { supabase } from "@/lib/supabase";
 import { toastSuccess, toastError, toastInfo } from "@/lib/toast";
-import DeleteModal from "@/components/DeleteModal";
+import DeleteModal from "@/app/components/DeleteModal";
 import { useEffect, useState, useRef } from "react";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
