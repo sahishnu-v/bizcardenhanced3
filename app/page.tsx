@@ -1,6 +1,6 @@
 // app/page.tsx
 // Shows only approved cards to public
-// Admin: add, edit (with photo), delete cards
+// Admin: add, edit (with photo), delete cards, generate AI bio
 "use client";
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,10 @@ export default function Page() {
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Card | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Bio state — keyed by card id so each card tracks its own bio
+  const [bios, setBios] = useState<Record<string, string>>({});
+  const [generatingBioId, setGeneratingBioId] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -241,6 +245,46 @@ export default function Page() {
     }
   };
 
+  // ── Generate Bio ─────────────────────────────────────────
+  const handleGenerateBio = async (card: Card) => {
+    setGeneratingBioId(card.id);
+    setBios(prev => ({ ...prev, [card.id]: "" }));
+
+    try {
+      const res = await fetch("/api/generate-bio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: card.full_name,
+          title: card.title,
+          business: card.company,
+          category: card.categories?.name,
+        }),
+      });
+
+      if (!res.ok) {
+        toastError("Failed to generate bio. Check your API key.");
+        setGeneratingBioId(null);
+        return;
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        setBios(prev => ({ ...prev, [card.id]: (prev[card.id] ?? "") + chunk }));
+      }
+    } catch (err) {
+      toastError("Something went wrong generating the bio.");
+      console.error(err);
+    } finally {
+      setGeneratingBioId(null);
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <p className="text-slate-400 text-sm font-medium animate-pulse">Loading Directory…</p>
@@ -364,6 +408,8 @@ export default function Page() {
         <div className="grid grid-cols-1 gap-y-10 gap-x-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {cards.map(card => {
             const isEditing = editingId === card.id;
+            const isGenerating = generatingBioId === card.id;
+            const bio = bios[card.id];
             const avatarUrl = card.profile_photo_url
               ?? `https://api.dicebear.com/7.x/personas/svg?seed=${card.id}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
 
@@ -419,8 +465,19 @@ export default function Page() {
                       <h3 className="text-lg font-bold text-slate-900">{card.full_name}</h3>
                       <p className="text-sm font-medium text-slate-500 italic">{card.title}</p>
                       <p className="mt-1 text-sm font-semibold text-slate-700 uppercase tracking-tight">{card.company}</p>
+
+                      {/* AI Bio */}
+                      {(bio || isGenerating) && (
+                        <p className="mt-3 text-xs text-slate-500 leading-relaxed italic">
+                          {bio}
+                          {isGenerating && (
+                            <span className="inline-block w-1.5 h-3 bg-slate-400 ml-0.5 animate-pulse rounded-sm" />
+                          )}
+                        </p>
+                      )}
+
                       {user && (
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex gap-2 mt-3 flex-wrap">
                           <button onClick={() => handleEditClick(card)}
                             className="text-[10px] bg-slate-50 text-blue-600 px-2 py-1 rounded border border-blue-100 font-bold uppercase hover:bg-blue-500 hover:text-white transition-colors">
                             Edit
@@ -428,6 +485,13 @@ export default function Page() {
                           <button onClick={() => setDeleteTarget(card)}
                             className="text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded border border-red-100 font-bold uppercase hover:bg-red-500 hover:text-white transition-colors">
                             Delete
+                          </button>
+                          <button
+                            onClick={() => handleGenerateBio(card)}
+                            disabled={isGenerating}
+                            className="text-[10px] bg-purple-50 text-purple-600 px-2 py-1 rounded border border-purple-100 font-bold uppercase hover:bg-purple-500 hover:text-white transition-colors disabled:opacity-50"
+                          >
+                            {isGenerating ? "Writing…" : "✦ Bio"}
                           </button>
                         </div>
                       )}
