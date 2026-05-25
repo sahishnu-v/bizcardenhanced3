@@ -1,6 +1,11 @@
 // app/api/generate-bio/route.ts
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
+const TYPEWRITER_DELAY_MS = 30;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function POST(request: Request) {
   const { name, title, business, category } = await request.json();
 
@@ -42,40 +47,60 @@ export async function POST(request: Request) {
     );
   }
 
-  // Stream the response back to the browser as plain text
+  // Parse SSE from DeepSeek and re-emit one character at a time
+  // with a 30ms delay between characters — typewriter effect happens server-side.
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const reader = deepseekRes.body!.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        // DeepSeek sends server-sent events: "data: {...}\n\n"
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+          buffer += decoder.decode(value, { stream: true });
 
-        for (const line of lines) {
-          const json = line.replace("data: ", "").trim();
-          if (json === "[DONE]") break;
+          // Process complete SSE events (separated by blank line)
+          let sepIdx: number;
+          while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+            const rawEvent = buffer.slice(0, sepIdx);
+            buffer = buffer.slice(sepIdx + 2);
 
-          try {
-            const parsed = JSON.parse(json);
-            const text = parsed.choices?.[0]?.delta?.content;
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch {
-            // skip malformed chunks
+            for (const line of rawEvent.split("\n")) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+              const data = trimmed.slice(5).trim();
+              if (!data || data === "[DONE]") continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const text: string | undefined = parsed.choices?.[0]?.delta?.content;
+                if (text) {
+                  for (const ch of text) {
+                    controller.enqueue(encoder.encode(ch));
+                    await sleep(TYPEWRITER_DELAY_MS);
+                  }
+                }
+              } catch {
+                // skip malformed chunks
+              }
+            }
           }
         }
+      } finally {
+        try { controller.close(); } catch { /* already closed */ }
       }
-
-      controller.close();
     },
   });
 
   return new Response(stream, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      "X-Accel-Buffering": "no",
+    },
   });
 }
